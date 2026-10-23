@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biblioteca Brasmacol</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E%F0%9F%93%9A%3C/text%3E%3C/svg%3E">
+<style>
+  :root { --bg:#f4f5f7; --card:#fff; --tx:#1d2330; --mut:#6b7280; --ok:#16794c; --okbg:#e3f5ec; --warn:#a15c00; --warnbg:#fff1dc; --bad:#b42318; --badbg:#fde8e7; --pri:#1f4e9c; }
+  * { box-sizing:border-box; }
+  body { margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; background:var(--bg); color:var(--tx); }
+  header { background:var(--pri); color:#fff; padding:16px 16px 14px; }
+  .topo { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; }
+  header h1 { margin:0; font-size:20px; }
+  header p { margin:4px 0 10px; opacity:.85; font-size:14px; }
+  #conta { font-size:13px; text-align:right; white-space:nowrap; }
+  #conta button { background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.4); border-radius:8px; padding:7px 10px; font-size:13px; cursor:pointer; }
+  #conta .nome { display:block; margin-bottom:4px; max-width:170px; overflow:hidden; text-overflow:ellipsis; }
+  #busca { width:100%; padding:11px 12px; font-size:16px; border:none; border-radius:8px; }
+  main { max-width:640px; margin:0 auto; padding:12px 16px 40px; }
+  .secao { margin:18px 0 8px; font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; display:flex; align-items:center; gap:8px; }
+  .secao i { width:12px; height:12px; border-radius:3px; display:inline-block; }
+  .livro { background:var(--card); border-radius:12px; padding:12px; margin-bottom:8px; box-shadow:0 1px 2px rgba(0,0,0,.06); display:flex; gap:12px; align-items:center; cursor:pointer; }
+  .num { flex:0 0 40px; height:40px; border-radius:50%; color:#fff; font-weight:700; display:flex; align-items:center; justify-content:center; font-size:15px; }
+  .info { flex:1; min-width:0; }
+  .titulo { font-weight:600; }
+  .sub { font-size:13px; color:var(--mut); margin-top:2px; }
+  .tag { font-size:12px; font-weight:600; padding:4px 8px; border-radius:999px; white-space:nowrap; }
+  .disp { background:var(--okbg); color:var(--ok); }
+  .emp { background:var(--warnbg); color:var(--warn); }
+  .atr { background:var(--badbg); color:var(--bad); }
+  .meu { outline:2px solid var(--pri); }
+  .semcad { display:block; width:100%; margin-top:24px; padding:14px; font-size:15px; border-radius:10px; border:2px dashed #9aa3b2; background:transparent; color:var(--tx); cursor:pointer; }
+  dialog { border:none; border-radius:14px; padding:20px; width:min(92vw,420px); }
+  dialog::backdrop { background:rgba(0,0,0,.4); }
+  dialog h2 { margin:0 0 6px; font-size:18px; }
+  label { display:block; font-size:14px; margin:12px 0 4px; }
+  input, select { width:100%; padding:12px; font-size:16px; border:1px solid #cfd4dc; border-radius:8px; background:#fff; }
+  .acoes { display:flex; gap:8px; margin-top:18px; }
+  .acoes button { flex:1; padding:12px; font-size:16px; border-radius:8px; border:none; cursor:pointer; }
+  .btn-pri { background:var(--pri); color:#fff; }
+  .btn-sec { background:#e5e7eb; color:var(--tx); }
+  button:disabled { opacity:.6; }
+  .erro { color:var(--bad); font-size:14px; margin-top:10px; min-height:1em; }
+  .msg { text-align:center; color:var(--mut); padding:20px 0; }
+  .ok { color:var(--ok); }
+  .links { margin-top:14px; font-size:14px; }
+  .links a { color:var(--pri); cursor:pointer; text-decoration:underline; }
+  .abas { display:flex; gap:6px; margin-bottom:10px; }
+  .abas button { flex:1; padding:10px; border-radius:8px; border:1px solid #cfd4dc; background:#fff; font-size:15px; cursor:pointer; }
+  .abas button.on { background:var(--pri); color:#fff; border-color:var(--pri); }
+  .passo { display:none; }
+  .passo.on { display:block; }
+</style>
+</head>
+<body>
+<header>
+  <div class="topo">
+    <div>
+      <h1>Biblioteca Brasmacol</h1>
+      <p>Toque no livro para pegar emprestado ou devolver.</p>
+    </div>
+    <div id="conta"></div>
+  </div>
+  <input id="busca" type="search" placeholder="Buscar título, autor ou número…">
+</header>
+<main>
+  <div id="avisos"></div>
+  <div id="lista"><div class="msg">Carregando…</div></div>
+  <button class="semcad" id="btnSemCad">Devolver um livro que não está na lista</button>
+</main>
+
+<dialog id="dlg">
+  <h2 id="dlgTitulo"></h2>
+  <div id="dlgSub" class="sub"></div>
+  <div id="camposSemCad" style="display:none">
+    <label for="scTitulo">Título do livro</label>
+    <input id="scTitulo">
+    <label for="scSecao">Cor do adesivo / seção (se souber)</label>
+    <select id="scSecao"></select>
+    <label for="scNumero">Número do adesivo (se tiver)</label>
+    <input id="scNumero" inputmode="numeric">
+  </div>
+  <div class="erro" id="erro"></div>
+  <div class="acoes">
+    <button class="btn-sec" id="cancelar">Cancelar</button>
+    <button class="btn-pri" id="renovar" style="display:none">Renovar +15 dias</button>
+    <button class="btn-pri" id="confirmar"></button>
+  </div>
+</dialog>
+
+<dialog id="dlgAuth">
+  <div class="abas" id="abasAuth">
+    <button data-p="entrar" class="on">Entrar</button>
+    <button data-p="cadastrar">Cadastrar</button>
+  </div>
+
+  <div class="passo on" id="p-entrar">
+    <label for="enEmail">E-mail</label>
+    <input id="enEmail" type="email" autocomplete="email">
+    <label for="enSenha">Senha</label>
+    <input id="enSenha" type="password" autocomplete="current-password">
+    <div class="links"><a data-ir="esqueci">Esqueci a senha</a></div>
+  </div>
+
+  <div class="passo" id="p-cadastrar">
+    <label for="caNome">Nome completo</label>
+    <input id="caNome" autocomplete="name">
+    <label for="caSetor">Setor</label>
+    <input id="caSetor">
+    <label for="caEmail">E-mail (Gmail ou da empresa)</label>
+    <input id="caEmail" type="email" autocomplete="email">
+    <label for="caSenha">Crie uma senha (mín. 6 caracteres)</label>
+    <input id="caSenha" type="password" autocomplete="new-password">
+  </div>
+
+  <div class="passo" id="p-confirmar">
+    <h2>Confirme seu e-mail</h2>
+    <div class="sub">Enviamos um código de 6 dígitos para <b id="cfEmail"></b>. Veja também a caixa de spam.</div>
+    <label for="cfCodigo">Código</label>
+    <input id="cfCodigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+  </div>
+
+  <div class="passo" id="p-esqueci">
+    <h2>Recuperar senha</h2>
+    <div class="sub">Informe seu e-mail. Vamos mandar um código para criar uma nova senha.</div>
+    <label for="esEmail">E-mail</label>
+    <input id="esEmail" type="email" autocomplete="email">
+  </div>
+
+  <div class="passo" id="p-redefinir">
+    <h2>Nova senha</h2>
+    <div class="sub">Se o e-mail tiver cadastro, o código chega em instantes. Veja também o spam.</div>
+    <label for="reCodigo">Código recebido</label>
+    <input id="reCodigo" inputmode="numeric" maxlength="6" autocomplete="one-time-code">
+    <label for="reSenha">Nova senha (mín. 6 caracteres)</label>
+    <input id="reSenha" type="password" autocomplete="new-password">
+  </div>
+
+  <div class="erro" id="erroAuth"></div>
+  <div class="acoes">
+    <button class="btn-sec" id="authCancelar">Cancelar</button>
+    <button class="btn-pri" id="authOk">Entrar</button>
+  </div>
+</dialog>
+
+<script>
+  // Conversa com a planilha pelo Apps Script (API JSON, sem cookies de conta Google).
+  const API_URL = 'https://script.google.com/macros/s/AKfycbx-nHgYxZYTHqZH71foblCqHqNYW8Jo9KZ_BuKlWrgH4o44rcg7DvSlKBvlqpaQL8jVTg/exec';
+  function runner(ok, fail) {
+    return new Proxy({}, { get(_, acao) {
+      if (acao === 'withSuccessHandler') return f => runner(f, fail);
+      if (acao === 'withFailureHandler') return f => runner(ok, f);
+      return (...args) => fetch(API_URL, {
+          method: 'POST', credentials: 'omit', redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ acao: acao, args: args })
+        })
+        .then(r => r.json())
+        .then(j => { if (j.ok) { if (ok) ok(j.data); } else if (fail) fail(new Error(j.erro)); })
+        .catch(() => { if (fail) fail(new Error('Sem conexão com o servidor. Verifique a internet e tente de novo.')); });
+    } });
+  }
+  const google = { script: { run: runner(null, null) } };
+</script>
+<script>
+  const SECOES = [
+    ['Desenvolvimento Pessoal', '#1e7fd6', 'azul'],
+    ['Desenvolvimento Profissional', '#e8590c', 'laranja'],
+    ['Conhecimento Científico e Tecnológico', '#3f9a3a', 'verde'],
+    ['Desenvolvimento Corporativo', '#c0900a', 'dourado'],
+    ['Leitura Recreativa', '#4e342e', 'marrom/preto'],
+    ['Conhecimento Social e Econômico', '#7a7f87', 'cinza'],
+    ['Literatura Adulta', '#c62828', 'vermelho']
+  ];
+  const COR = Object.fromEntries(SECOES.map(s => [s[0], s[1]]));
+  const ROTULO = { entrar: 'Entrar', cadastrar: 'Enviar código', confirmar: 'Confirmar', esqueci: 'Enviar código', redefinir: 'Salvar nova senha' };
+  let livros = [], atual = null, modo = null, usuario = null, depoisDoLogin = null, passo = 'entrar';
+  const $ = id => document.getElementById(id);
+  const ls = {
+    get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } },
+    set: (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} }
+  };
+  const limpaErro = e => (e && e.message ? e.message : 'Erro. Tente de novo.').replace(/^Error:\s*/, '');
+
+  $('scSecao').innerHTML = '<option value="">Não sei</option>' +
+    SECOES.map(s => '<option>' + s[0] + ' (' + s[2] + ')</option>').join('');
+
+  function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+  function norm(s) { return String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
+  function aviso(t) { $('avisos').innerHTML = t ? '<div class="msg ok">' + esc(t) + '</div>' : ''; }
+
+  // ---------- Conta ----------
+  function renderConta() {
+    if (usuario) {
+      $('conta').innerHTML = '<span class="nome">Olá, ' + esc(usuario.nome.split(' ')[0]) + '</span><button id="btnSair">Sair</button>';
+      $('btnSair').onclick = () => { google.script.run.sair(ls.get('bib_token')); ls.set('bib_token', null); usuario = null; renderConta(); render(); };
+    } else {
+      $('conta').innerHTML = '<button id="btnEntrar">Entrar / Cadastrar</button>';
+      $('btnEntrar').onclick = () => abrirAuth('entrar');
+    }
+  }
+
+  function irPasso(p) {
+    passo = p;
+    document.querySelectorAll('.passo').forEach(el => el.classList.toggle('on', el.id === 'p-' + p));
+    document.querySelectorAll('#abasAuth button').forEach(b => b.classList.toggle('on', b.dataset.p === p));
+    $('abasAuth').style.display = (p === 'entrar' || p === 'cadastrar') ? '' : 'none';
+    $('authOk').textContent = ROTULO[p];
+    $('erroAuth').textContent = '';
+  }
+  document.querySelectorAll('#abasAuth button').forEach(b => b.onclick = () => irPasso(b.dataset.p));
+  document.querySelectorAll('[data-ir]').forEach(a => a.onclick = () => { $('esEmail').value = $('enEmail').value; irPasso(a.dataset.ir); });
+
+  function abrirAuth(p, depois) {
+    depoisDoLogin = depois || null;
+    $('enEmail').value = ls.get('bib_email') || '';
+    ['enSenha', 'caSenha', 'cfCodigo', 'reCodigo', 'reSenha'].forEach(id => $(id).value = '');
+    irPasso(p);
+    $('dlgAuth').showModal();
+  }
+  $('authCancelar').onclick = () => { depoisDoLogin = null; $('dlgAuth').close(); };
+
+  function logado(s) {
+    ls.set('bib_token', s.token); ls.set('bib_email', s.email);
+    usuario = { nome: s.nome, email: s.email, admin: s.admin };
+    $('dlgAuth').close(); renderConta(); render();
+    const f = depoisDoLogin; depoisDoLogin = null;
+    if (f) f();
+  }
+
+  $('authOk').onclick = () => {
+    const btn = $('authOk'); btn.disabled = true; $('erroAuth').textContent = '';
+    const r = google.script.run.withFailureHandler(e => { btn.disabled = false; $('erroAuth').textContent = limpaErro(e); });
+    const fim = f => x => { btn.disabled = false; f(x); };
+    if (passo === 'entrar') {
+      r.withSuccessHandler(fim(logado)).entrar($('enEmail').value, $('enSenha').value);
+    } else if (passo === 'cadastrar') {
+      r.withSuccessHandler(fim(() => { $('cfEmail').textContent = $('caEmail').value.trim(); irPasso('confirmar'); }))
+        .iniciarCadastro($('caNome').value, $('caSetor').value, $('caEmail').value, $('caSenha').value);
+    } else if (passo === 'confirmar') {
+      r.withSuccessHandler(fim(s => { logado(s); aviso('Cadastro concluído. Bem-vindo(a)!'); })).confirmarCadastro($('caEmail').value, $('cfCodigo').value);
+    } else if (passo === 'esqueci') {
+      r.withSuccessHandler(fim(() => irPasso('redefinir'))).esqueciSenha($('esEmail').value);
+    } else if (passo === 'redefinir') {
+      r.withSuccessHandler(fim(s => { logado(s); aviso('Senha alterada.'); })).redefinirSenha($('esEmail').value, $('reCodigo').value, $('reSenha').value);
+    }
+  };
+
+  // ---------- Lista ----------
+  function render() {
+    const q = norm($('busca').value.trim());
+    const lista = livros.filter(l => !q || norm(l.titulo + ' ' + l.autor + ' ' + l.numero + ' ' + l.secao + ' ' + l.codigo).includes(q));
+    if (!lista.length) { $('lista').innerHTML = '<div class="msg">Nenhum livro encontrado.</div>'; return; }
+    const ordem = SECOES.map(s => s[0]);
+    const pos = n => ordem.indexOf(n) < 0 ? 99 : ordem.indexOf(n);
+    const grupos = {};
+    lista.forEach(l => (grupos[l.secao] = grupos[l.secao] || []).push(l));
+    $('lista').innerHTML = Object.keys(grupos).sort((a, b) => pos(a) - pos(b)).map(sec => {
+      const cor = COR[sec] || '#555';
+      const itens = grupos[sec].sort((a, b) => (a.numero || '99').localeCompare(b.numero || '99')).map(l => {
+        let tag, sub = esc(l.autor);
+        if (l.status === 'Disponível') tag = '<span class="tag disp">Disponível</span>';
+        else {
+          tag = l.atrasado ? '<span class="tag atr">Atrasado</span>' : '<span class="tag emp">Emprestado</span>';
+          sub = 'Com ' + esc(l.comQuem) + (l.setor ? ' (' + esc(l.setor) + ')' : '') + ' · até ' + esc(l.devolverAte);
+        }
+        const meu = usuario && l.status !== 'Disponível' && l.comQuem === usuario.nome ? ' meu' : '';
+        return '<div class="livro' + meu + '" data-c="' + esc(l.codigo) + '"><div class="num" style="background:' + cor + '">' + esc(l.numero || 's/n') + '</div>' +
+          '<div class="info"><div class="titulo">' + esc(l.titulo) + '</div>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>' + tag + '</div>';
+      }).join('');
+      return '<div class="secao"><i style="background:' + cor + '"></i>' + esc(sec) + '</div>' + itens;
+    }).join('');
+    document.querySelectorAll('.livro').forEach(el => el.onclick = () => exigirLogin(() => abrir(el.dataset.c)));
+  }
+
+  function exigirLogin(f) { if (usuario) f(); else abrirAuth('entrar', f); }
+
+  function abrir(codigo) {
+    atual = livros.find(l => l.codigo === codigo);
+    if (!atual) return;
+    const disp = atual.status === 'Disponível';
+    modo = disp ? 'emprestar' : 'devolver';
+    $('erro').textContent = '';
+    $('dlgTitulo').textContent = (atual.numero ? atual.numero + ' · ' : '') + atual.titulo;
+    $('camposSemCad').style.display = 'none';
+    $('dlgSub').textContent = disp
+      ? atual.secao + '. Pegar emprestado em nome de ' + usuario.nome + '? Prazo de 15 dias, renovável 1 vez. Limite de 1 livro por pessoa.'
+      : 'Emprestado para ' + atual.comQuem + ' até ' + atual.devolverAte + '. Confirmar devolução?';
+    $('confirmar').textContent = disp ? 'Pegar emprestado' : 'Devolver';
+    const meu = !disp && usuario && atual.comQuem === usuario.nome;
+    $('renovar').style.display = meu && !atual.renovado ? '' : 'none';
+    if (meu) $('dlgSub').textContent = 'Com você até ' + atual.devolverAte + (atual.renovado ? '. Já foi renovado uma vez.' : '. Você pode renovar uma vez por mais 15 dias.');
+    $('dlg').showModal();
+  }
+
+  $('btnSemCad').onclick = () => exigirLogin(() => {
+    modo = 'semcad';
+    $('renovar').style.display = 'none';
+    $('erro').textContent = '';
+    $('dlgTitulo').textContent = 'Devolver livro fora da lista';
+    $('dlgSub').textContent = 'Deixe o livro na estante. O RH vai cadastrá-lo.';
+    $('camposSemCad').style.display = '';
+    $('scTitulo').value = ''; $('scNumero').value = ''; $('scSecao').value = '';
+    $('confirmar').textContent = 'Registrar devolução';
+    $('dlg').showModal();
+  });
+
+  $('cancelar').onclick = () => $('dlg').close();
+  $('renovar').onclick = () => {
+    const btn = $('renovar'); btn.disabled = true; $('erro').textContent = '';
+    google.script.run.withFailureHandler(e => { btn.disabled = false; $('erro').textContent = limpaErro(e); })
+      .withSuccessHandler(lista => { btn.disabled = false; $('dlg').close(); livros = lista; render(); aviso('Renovado por mais 15 dias.'); })
+      .renovar(ls.get('bib_token'), atual.codigo);
+  };
+  $('busca').oninput = render;
+
+  $('confirmar').onclick = () => {
+    const btn = $('confirmar'); btn.disabled = true; $('erro').textContent = '';
+    const tk = ls.get('bib_token');
+    const fail = e => {
+      btn.disabled = false;
+      const m = limpaErro(e);
+      if (/Sess[aã]o expirada|Fa[cç]a login/.test(m)) { ls.set('bib_token', null); usuario = null; renderConta(); $('dlg').close(); abrirAuth('entrar'); return; }
+      $('erro').textContent = m; carregar();
+    };
+    const ok = msg => lista => { btn.disabled = false; $('dlg').close(); livros = lista; render(); aviso(msg); };
+    const r = google.script.run.withFailureHandler(fail);
+    if (modo === 'emprestar') r.withSuccessHandler(ok('Empréstimo registrado. Boa leitura!')).emprestar(tk, atual.codigo);
+    else if (modo === 'devolver') r.withSuccessHandler(ok('Devolução registrada. Obrigado!')).devolver(tk, atual.codigo);
+    else r.withSuccessHandler(ok('Devolução registrada. Obrigado!')).devolverSemCadastro(tk, $('scTitulo').value, $('scSecao').value, $('scNumero').value);
+  };
+
+  function carregar() {
+    google.script.run.withSuccessHandler(l => { livros = l; render(); })
+      .withFailureHandler(e => $('lista').innerHTML = '<div class="msg">Erro ao carregar: ' + esc(limpaErro(e)) + '</div>')
+      .listarLivros();
+  }
+
+  renderConta();
+  carregar();
+  const tk0 = ls.get('bib_token');
+  if (tk0) google.script.run.withSuccessHandler(u => { if (u) { usuario = u; renderConta(); render(); } else ls.set('bib_token', null); }).quemSou(tk0);
+</script>
+</body>
+</html>
